@@ -355,6 +355,14 @@ impl String {
         // without copying and never frees it.
         unsafe { BunString__createStaticExternal(bytes.as_ptr(), bytes.len(), is_latin1) }
     }
+    /// UTF-16 form of [`Self::create_static_external`]: `units` must be
+    /// 2-byte aligned and live for the rest of the process.
+    pub fn create_static_external_utf16(units: &[u16]) -> Self {
+        debug_assert!(!units.is_empty());
+        // SAFETY: the C++ side takes the length in code units and stores
+        // ptr/len without copying or freeing.
+        unsafe { BunString__createStaticExternal(units.as_ptr().cast::<u8>(), units.len(), false) }
+    }
     /// `bun.String.createFormat` — formats `args` into a temporary buffer and
     /// copies the result into a fresh WTF-backed string.
     pub fn create_format(args: core::fmt::Arguments<'_>) -> Self {
@@ -1830,17 +1838,6 @@ impl SliceWithUnderlyingString {
         SliceWithUnderlyingString {
             utf8: ZigStringSlice::EMPTY,
             underlying: self.underlying.dupe_ref(),
-            #[cfg(debug_assertions)]
-            did_report_extra_memory_debug: false,
-        }
-    }
-
-    /// `fromUTF8` — wrap a borrowed UTF-8 slice (caller keeps it alive).
-    #[inline]
-    pub fn from_utf8(utf8: &[u8]) -> SliceWithUnderlyingString {
-        SliceWithUnderlyingString {
-            utf8: ZigStringSlice::from_utf8_never_free(utf8),
-            underlying: String::DEAD,
             #[cfg(debug_assertions)]
             did_report_extra_memory_debug: false,
         }
